@@ -4,17 +4,27 @@
 -- Table: workspaces
 -- Supports real-time collaborative clipboard, text, and code sharing with
 -- monotonic versioning, optimistic concurrency control, and Row Level Security.
+-- Uses TEXT for id to support both custom short room names (e.g. 'k8m2p9', 'my-code')
+-- and full UUIDs.
 -- ============================================================================
 
 -- 1. Create workspaces table
 CREATE TABLE IF NOT EXISTS public.workspaces (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
     content TEXT NOT NULL DEFAULT '',
     language TEXT NOT NULL DEFAULT 'plaintext',
     version BIGINT NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Ensure id is TEXT even if table already existed with UUID
+DO $$
+BEGIN
+    ALTER TABLE public.workspaces ALTER COLUMN id TYPE TEXT;
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
 
 -- 2. Indexes for efficient lookup and sorting
 CREATE INDEX IF NOT EXISTS idx_workspaces_updated_at 
@@ -24,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_workspaces_updated_at
 ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 
 -- 4. RLS Policies for Anonymous Public Workspaces Model:
--- Anyone holding the workspace UUID link can read, create, and update the workspace.
+-- Anyone holding the workspace link can read, create, and update the workspace.
 -- Note: Workspaces are public by design. Confidential secrets should not be stored.
 
 -- Policy: Allow public read access
@@ -54,7 +64,7 @@ CREATE POLICY "Allow public update on workspaces"
 -- the current database version, and conditionally increments the version.
 -- If a conflict occurs, returns the current server version and content without updating.
 CREATE OR REPLACE FUNCTION public.update_workspace_atomic(
-    p_id UUID,
+    p_id TEXT,
     p_content TEXT,
     p_language TEXT,
     p_expected_version BIGINT
@@ -104,7 +114,7 @@ END;
 $$;
 
 -- Grant execution permission on atomic update function to anon & authenticated roles
-GRANT EXECUTE ON FUNCTION public.update_workspace_atomic(UUID, TEXT, TEXT, BIGINT) 
+GRANT EXECUTE ON FUNCTION public.update_workspace_atomic(TEXT, TEXT, TEXT, BIGINT) 
     TO anon, authenticated;
 
 -- 6. Enable Supabase Realtime for the workspaces table

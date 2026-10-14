@@ -1,34 +1,66 @@
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const WORKSPACE_ID_REGEX = /^[a-zA-Z0-9_-]{2,64}$/
 
 export const MAX_RECOMMENDED_CHARS = 1_000_000 // ~1MB of text
 
-export function isValidUuid(id: string): boolean {
+// 32 unambiguous URL-friendly characters (omitting 0, O, 1, l, I)
+const SHORT_ID_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
+
+export function isValidWorkspaceId(id: string): boolean {
   if (!id || typeof id !== 'string') return false
-  return UUID_REGEX.test(id.trim())
+  return WORKSPACE_ID_REGEX.test(id.trim())
 }
 
-export function generateUuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
+// Keep isValidUuid for backward compatibility
+export function isValidUuid(id: string): boolean {
+  return isValidWorkspaceId(id)
+}
+
+/**
+ * Generates a short, clean, human-friendly 6-character workspace ID.
+ * Example: "m7p2xk", "9bw4zq"
+ */
+export function generateShortId(length = 6): string {
+  let result = ''
+  const charactersLength = SHORT_ID_ALPHABET.length
+
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(length)
+    crypto.getRandomValues(bytes)
+    for (let i = 0; i < length; i++) {
+      result += SHORT_ID_ALPHABET[bytes[i] % charactersLength]
+    }
+    return result
   }
-  // Fallback RFC4122 v4 UUID generator
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+
+  for (let i = 0; i < length; i++) {
+    result += SHORT_ID_ALPHABET.charAt(Math.floor(Math.random() * charactersLength))
+  }
+  return result
 }
 
+// Full UUID generator maintained for fallback or explicit UUID needs
+export function generateUuid(): string {
+  return generateShortId(6)
+}
+
+/**
+ * Extracts a workspace ID from user input (raw ID or pasted URL).
+ * Handles:
+ * - "my-code" -> "my-code"
+ * - "https://moderncs.netlify.app/room/my-code" -> "my-code"
+ * - "/room/x7k9p2" -> "x7k9p2"
+ * - "https://site.com/room/ecfa1a8f-4514-4653-8a56-f2af4b3afdef" -> "ecfa1a8f-4514-4653-8a56-f2af4b3afdef"
+ */
 export function extractWorkspaceIdFromInput(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
 
-  // If user pasted a full URL like https://syncpad.app/room/abc-... or /room/abc-...
-  const match = trimmed.match(/room\/([0-9a-fA-F-]+)/)
+  // If user pasted a full URL or path containing /room/
+  const match = trimmed.match(/room\/([a-zA-Z0-9_-]+)/i)
   if (match && match[1]) {
     return match[1]
   }
 
-  return trimmed
+  // Remove leading slashes if entered like "/my-room"
+  return trimmed.replace(/^\/+/, '')
 }

@@ -1,37 +1,53 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isValidUuid,
-  generateUuid,
+  isValidWorkspaceId,
+  generateShortId,
   extractWorkspaceIdFromInput,
 } from '../utils/validation'
 
 describe('validation utility', () => {
-  it('validates standard UUID v4 strings', () => {
-    expect(isValidUuid('550e8400-e29b-41d4-a716-446655440000')).toBe(true)
-    expect(isValidUuid('f47ac10b-58cc-4372-a567-0e02b2c3d479')).toBe(true)
-    expect(isValidUuid('not-a-uuid')).toBe(false)
-    expect(isValidUuid('')).toBe(false)
-    expect(isValidUuid('550e8400-e29b-41d4-a716')).toBe(false)
+  it('validates short IDs, custom room slugs, and standard UUIDs', () => {
+    // Short 6-char IDs
+    expect(isValidWorkspaceId('k8m2p9')).toBe(true)
+    expect(isValidWorkspaceId('x7q4zw')).toBe(true)
+
+    // Custom room names
+    expect(isValidWorkspaceId('my-code')).toBe(true)
+    expect(isValidWorkspaceId('team_standup_2026')).toBe(true)
+
+    // Full UUIDs
+    expect(isValidWorkspaceId('550e8400-e29b-41d4-a716-446655440000')).toBe(true)
+    expect(isValidWorkspaceId('ecfa1a8f-4514-4653-8a56-f2af4b3afdef')).toBe(true)
+
+    // Invalid inputs
+    expect(isValidWorkspaceId('a')).toBe(false) // too short
+    expect(isValidWorkspaceId('')).toBe(false)
+    expect(isValidWorkspaceId('room with spaces')).toBe(false)
+    expect(isValidWorkspaceId('room@invalid!')).toBe(false)
   })
 
-  it('generates valid UUID v4', () => {
-    const uuid = generateUuid()
-    expect(isValidUuid(uuid)).toBe(true)
+  it('generates short 6-character room IDs', () => {
+    const id = generateShortId(6)
+    expect(id).toHaveLength(6)
+    expect(isValidWorkspaceId(id)).toBe(true)
   })
 
-  it('extracts workspace UUID from various user input formats', () => {
-    const testUuid = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
-
-    // Plain UUID
-    expect(extractWorkspaceIdFromInput(testUuid)).toBe(testUuid)
-    expect(extractWorkspaceIdFromInput(`  ${testUuid}  `)).toBe(testUuid)
+  it('extracts workspace ID from user inputs and URLs', () => {
+    // Plain short ID
+    expect(extractWorkspaceIdFromInput('k8m2p9')).toBe('k8m2p9')
+    expect(extractWorkspaceIdFromInput('  my-room  ')).toBe('my-room')
 
     // Full URL
     expect(
-      extractWorkspaceIdFromInput(`https://syncpad.netlify.app/room/${testUuid}`)
-    ).toBe(testUuid)
+      extractWorkspaceIdFromInput('https://moderncs.netlify.app/room/k8m2p9')
+    ).toBe('k8m2p9')
 
     // Relative URL
-    expect(extractWorkspaceIdFromInput(`/room/${testUuid}`)).toBe(testUuid)
+    expect(extractWorkspaceIdFromInput('/room/team-code')).toBe('team-code')
+
+    // UUID URL
+    expect(
+      extractWorkspaceIdFromInput('https://moderncs.netlify.app/room/ecfa1a8f-4514-4653-8a56-f2af4b3afdef')
+    ).toBe('ecfa1a8f-4514-4653-8a56-f2af4b3afdef')
   })
 })

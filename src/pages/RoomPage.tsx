@@ -8,7 +8,7 @@ import { ToastContainer } from '../components/Toast'
 import { EnvNoticeBanner } from '../components/EnvNoticeBanner'
 import { useWorkspace } from '../hooks/useWorkspace'
 import { isSupabaseConfigured } from '../services/supabaseClient'
-import { isValidUuid, generateUuid } from '../utils/validation'
+import { isValidWorkspaceId, generateShortId } from '../utils/validation'
 import { AlertCircle, RefreshCw, Home, Plus } from 'lucide-react'
 import type { ToastMessage } from '../types/workspace'
 
@@ -29,7 +29,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ theme, onToggleTheme }) => {
       title: string,
       description?: string
     ) => {
-      const id = generateUuid()
+      const id = generateShortId(6)
       setToasts((prev) => [...prev, { id, type, title, description }])
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -38,9 +38,9 @@ export const RoomPage: React.FC<RoomPageProps> = ({ theme, onToggleTheme }) => {
     []
   )
 
-  const validId = workspaceId && isValidUuid(workspaceId)
+  const validId = workspaceId && isValidWorkspaceId(workspaceId)
 
-  // Use workspace hook if UUID is valid
+  // Use workspace hook if ID is valid
   const {
     content,
     language,
@@ -60,7 +60,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ theme, onToggleTheme }) => {
     onToast: addToast,
   })
 
-  // Handle invalid UUID
+  // Handle invalid room ID
   if (!validId) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100">
@@ -69,9 +69,9 @@ export const RoomPage: React.FC<RoomPageProps> = ({ theme, onToggleTheme }) => {
           <div className="p-4 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20 mb-4">
             <AlertCircle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold mb-2">Invalid Workspace ID</h2>
+          <h2 className="text-xl font-bold mb-2">Invalid Room Name</h2>
           <p className="text-sm text-slate-600 dark:text-zinc-400 mb-6 leading-relaxed">
-            The workspace ID <code className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-zinc-800 font-mono text-xs">{workspaceId}</code> is not a valid UUID.
+            The room name <code className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-zinc-800 font-mono text-xs">{workspaceId}</code> can only contain letters, numbers, hyphens, and underscores.
           </p>
           <div className="flex items-center gap-3">
             <Link
@@ -82,7 +82,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ theme, onToggleTheme }) => {
               Return Home
             </Link>
             <button
-              onClick={() => navigate(`/room/${generateUuid()}`)}
+              onClick={() => navigate(`/room/${generateShortId(6)}`)}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />

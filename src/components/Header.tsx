@@ -14,7 +14,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import { ConnectionStatusBadge } from './ConnectionStatusBadge'
-import { generateUuid } from '../utils/validation'
+import { generateShortId } from '../utils/validation'
 import type { ConnectionStatus, SaveStatus } from '../types/workspace'
 
 interface HeaderProps {
@@ -39,9 +39,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [copiedId, setCopiedId] = useState(false)
 
   const handleCreateNew = () => {
-    const newId = generateUuid()
+    const newId = generateShortId(6)
     navigate(`/room/${newId}`)
-    onToast('success', 'New workspace ready', 'Created a fresh, unique workspace link.')
+    onToast('success', 'New room ready', 'Created a fresh, short room link.')
   }
 
   const handleCopyLink = async () => {
@@ -152,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="font-mono text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1.5 transition-colors"
                 title="Click to copy full Workspace UUID"
               >
-                <span>{workspaceId.slice(0, 8)}...{workspaceId.slice(-4)}</span>
+                <span>{workspaceId.length > 14 ? `${workspaceId.slice(0, 8)}...${workspaceId.slice(-4)}` : workspaceId}</span>
                 {copiedId ? (
                   <Check className="w-3 h-3 text-emerald-500" />
                 ) : (

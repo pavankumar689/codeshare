@@ -13,7 +13,7 @@ import { Header } from '../components/Header'
 import { EnvNoticeBanner } from '../components/EnvNoticeBanner'
 import { ToastContainer } from '../components/Toast'
 import { isSupabaseConfigured } from '../services/supabaseClient'
-import { generateUuid, extractWorkspaceIdFromInput, isValidUuid } from '../utils/validation'
+import { generateShortId, extractWorkspaceIdFromInput, isValidWorkspaceId } from '../utils/validation'
 import type { ToastMessage } from '../types/workspace'
 
 interface HomePageProps {
@@ -31,7 +31,7 @@ export const HomePage: React.FC<HomePageProps> = ({ theme, onToggleTheme }) => {
     title: string,
     description?: string
   ) => {
-    const id = generateUuid()
+    const id = generateShortId(6)
     setToasts((prev) => [...prev, { id, type, title, description }])
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -39,7 +39,7 @@ export const HomePage: React.FC<HomePageProps> = ({ theme, onToggleTheme }) => {
   }
 
   const handleCreateWorkspace = () => {
-    const newId = generateUuid()
+    const newId = generateShortId(6)
     navigate(`/room/${newId}`)
   }
 
@@ -48,15 +48,15 @@ export const HomePage: React.FC<HomePageProps> = ({ theme, onToggleTheme }) => {
     const extractedId = extractWorkspaceIdFromInput(workspaceInput)
 
     if (!extractedId) {
-      addToast('warning', 'Input required', 'Please enter a valid workspace UUID or link.')
+      addToast('warning', 'Input required', 'Please enter a room name, short ID, or paste a link.')
       return
     }
 
-    if (!isValidUuid(extractedId)) {
+    if (!isValidWorkspaceId(extractedId)) {
       addToast(
         'error',
-        'Invalid UUID format',
-        'Workspace IDs must follow standard UUID v4 format (e.g. 550e8400-e29b-41d4-a716-446655440000).'
+        'Invalid room name',
+        'Room names can contain letters, numbers, hyphens, and underscores (e.g. "team-code" or "k8m2p9").'
       )
       return
     }
@@ -120,7 +120,7 @@ export const HomePage: React.FC<HomePageProps> = ({ theme, onToggleTheme }) => {
           <form onSubmit={handleJoinWorkspace} className="flex gap-2">
             <input
               type="text"
-              placeholder="Paste workspace link or UUID..."
+              placeholder="Enter room name (e.g. my-code) or paste link..."
               value={workspaceInput}
               onChange={(e) => setWorkspaceInput(e.target.value)}
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono transition-all"
