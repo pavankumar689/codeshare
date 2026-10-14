@@ -38,6 +38,12 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
   const hasPendingEditsRef = useRef<boolean>(false)
   const isSavingRef = useRef<boolean>(false)
 
+  // Keep onToast in a ref so callers' recreation does not retrigger effects
+  const onToastRef = useRef(onToast)
+  useEffect(() => {
+    onToastRef.current = onToast
+  }, [onToast])
+
   // Keep refs in sync with states
   useEffect(() => {
     contentRef.current = content
@@ -110,7 +116,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
               updatedAt: result.conflict.serverUpdatedAt,
             })
             setSaveStatus('conflict')
-            onToast?.(
+            onToastRef.current?.(
               'warning',
               'Concurrent update conflict',
               'Another device updated this workspace. You can choose to overwrite or accept remote changes.'
@@ -118,7 +124,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
           }
         } else {
           setSaveStatus('error')
-          onToast?.('error', 'Failed to save', result.error || 'Network error')
+          onToastRef.current?.('error', 'Failed to save', result.error || 'Network error')
         }
       } catch (err: any) {
         console.error('[SyncPad] Save exception:', err)
@@ -127,7 +133,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
         isSavingRef.current = false
       }
     },
-    [workspaceId, onToast]
+    [workspaceId]
   )
 
   useEffect(() => {
@@ -201,13 +207,28 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
 
     try {
       setConnectionStatus('syncing')
-      let ws = await workspaceService.getWorkspace(workspaceId)
 
-      if (!ws) {
-        // Workspace doesn't exist yet on server; automatically create it
-        ws = await workspaceService.createWorkspace(workspaceId, '', 'plaintext')
-        onToast?.('info', 'Workspace created', 'A new remote workspace has been initialized.')
-      }
+      const fetchPromise = (async () => {
+        let ws = await workspaceService.getWorkspace(workspaceId)
+        if (!ws) {
+          // Workspace doesn't exist yet on server; automatically create it
+          ws = await workspaceService.createWorkspace(workspaceId, '', 'plaintext')
+          onToastRef.current?.('info', 'Workspace created', 'A new remote workspace has been initialized.')
+        }
+        return ws
+      })()
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              'Connection timed out. Please check that you ran the SQL migration in your Supabase project (SQL Editor -> 20240101000000_create_workspaces.sql).'
+            )
+          )
+        }, 7000)
+      })
+
+      const ws = await Promise.race([fetchPromise, timeoutPromise])
 
       setContent(ws.content)
       setLanguage(ws.language)
@@ -226,7 +247,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
     } finally {
       setIsLoading(false)
     }
-  }, [workspaceId, onToast])
+  }, [workspaceId])
 
   // Conflict resolution actions
   const resolveConflictAcceptServer = useCallback(() => {
@@ -241,8 +262,8 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
     setConflictServerState(null)
     hasPendingEditsRef.current = false
     setSaveStatus('saved')
-    onToast?.('info', 'Remote version loaded', 'Workspace updated to server version.')
-  }, [conflictServerState, onToast])
+    onToastRef.current?.('info', 'Remote version loaded', 'Workspace updated to server version.')
+  }, [conflictServerState])
 
   const resolveConflictOverwriteServer = useCallback(() => {
     if (!conflictServerState) return
@@ -251,8 +272,8 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
     setVersion(conflictServerState.version)
     setConflictServerState(null)
     performSave(contentRef.current, languageRef.current)
-    onToast?.('info', 'Overwriting server', 'Saving local version to server.')
-  }, [conflictServerState, performSave, onToast])
+    onToastRef.current?.('info', 'Overwriting server', 'Saving local version to server.')
+  }, [conflictServerState, performSave])
 
   // Setup Supabase Realtime subscription & reconnection handlers
   useEffect(() => {
@@ -304,7 +325,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
               updatedAt: remoteUpdatedAt,
             })
             setSaveStatus('conflict')
-            onToast?.(
+            onToastRef.current?.(
               'warning',
               'Incoming remote update',
               'Another user updated this workspace while you had unsaved edits.'
@@ -343,7 +364,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
 
     const handleOffline = () => {
       setConnectionStatus('offline')
-      onToast?.(
+      onToastRef.current?.(
         'warning',
         'Device offline',
         'Changes will be saved once internet connection is restored.'
@@ -362,7 +383,7 @@ export function useWorkspace({ workspaceId, onToast }: UseWorkspaceOptions) {
         clearTimeout(debounceTimerRef.current)
       }
     }
-  }, [workspaceId, loadWorkspace, onToast])
+  }, [workspaceId, loadWorkspace])
 
   return {
     content,

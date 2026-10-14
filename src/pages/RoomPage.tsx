@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { Toolbar } from '../components/Toolbar'
@@ -23,17 +23,20 @@ export const RoomPage: React.FC<RoomPageProps> = ({ theme, onToggleTheme }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [isClearModalOpen, setIsClearModalOpen] = useState(false)
 
-  const addToast = (
-    type: 'success' | 'info' | 'warning' | 'error',
-    title: string,
-    description?: string
-  ) => {
-    const id = generateUuid()
-    setToasts((prev) => [...prev, { id, type, title, description }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
-  }
+  const addToast = useCallback(
+    (
+      type: 'success' | 'info' | 'warning' | 'error',
+      title: string,
+      description?: string
+    ) => {
+      const id = generateUuid()
+      setToasts((prev) => [...prev, { id, type, title, description }])
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id))
+      }, 4000)
+    },
+    []
+  )
 
   const validId = workspaceId && isValidUuid(workspaceId)
 
